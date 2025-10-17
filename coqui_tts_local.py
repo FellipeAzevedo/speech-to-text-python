@@ -6,7 +6,9 @@
 from __future__ import annotations
 
 import argparse
+import inspect
 import logging
+from functools import lru_cache
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Optional
@@ -31,6 +33,21 @@ def carregar_modelo(model_name: str) -> TTS:
     return TTS(model_name)
 
 
+@lru_cache(maxsize=None)
+def _caracteristicas_modelo(tts_type: type) -> tuple[bool, set[str]]:
+    """Retorna se o modelo aceita kwargs arbitrários e o conjunto de parâmetros suportados."""
+    try:
+        assinatura = inspect.signature(tts_type.tts)  # type: ignore[attr-defined]
+    except (TypeError, ValueError):  # pragma: no cover - fallback para objetos não inspecionáveis
+        return True, set()
+
+    aceita_kwargs = any(
+        parametro.kind == inspect.Parameter.VAR_KEYWORD for parametro in assinatura.parameters.values()
+    )
+    suportados = {nome for nome in assinatura.parameters}
+    return aceita_kwargs, suportados
+
+
 def ler_texto(arquivo: Path) -> str:
     """Lê o texto de entrada em UTF-8."""
     LOGGER.debug("Lendo arquivo de texto em %s", arquivo)
@@ -52,23 +69,36 @@ def sintetizar(
         raise ValueError("O texto de entrada está vazio.")
 
     LOGGER.info("Gerando áudio...")
-    kwargs = {
-        "text": texto,
-        "file_path": str(caminho_saida),
-        "speed": velocidade,
-    }
+    kwargs = {"text": texto, "file_path": str(caminho_saida)}
+
+    aceita_kwargs, parametros_suportados = _caracteristicas_modelo(type(tts))
+    parametros_ignorados: set[str] = set()
+
+    def adicionar_parametro(nome: str, valor: Optional[object]) -> None:
+        if valor is None:
+            return
+        if aceita_kwargs or nome in parametros_suportados:
+            kwargs[nome] = valor
+        else:
+            if nome not in parametros_ignorados:
+                LOGGER.warning("O parâmetro '%s' não é suportado por este modelo e será ignorado.", nome)
+                parametros_ignorados.add(nome)
+
+    # Ajustes de voz opcionais.
+    if velocidade != 1.0:
+        adicionar_parametro("speed", velocidade)
 
     # Modelos multilíngues aceitam a seleção de idioma e falante.
     if idioma:
-        kwargs["language"] = idioma
+        adicionar_parametro("language", idioma)
     if falante:
-        kwargs["speaker"] = falante
+        adicionar_parametro("speaker", falante)
     if indice_falante is not None:
-        kwargs["speaker_idx"] = indice_falante
+        adicionar_parametro("speaker_idx", indice_falante)
     if temperatura is not None:
         # A temperatura controla a aleatoriedade/entonação (default 0.65). Modelos como FastPitch já
         # embutem contornos de frequência, tornando a voz mais expressiva.
-        kwargs["temperature"] = temperatura
+        adicionar_parametro("temperature", temperatura)
 
     tts.tts_to_file(**kwargs)
     LOGGER.info("Arquivo %s criado com sucesso.", caminho_saida)
@@ -213,8 +243,11 @@ def configurar_argumentos() -> argparse.Namespace:
     parser.add_argument(
         "--temperatura",
         type=float,
-        default=0.65,
-        help="Temperatura para variação de entonação (default 0.65).",
+        default=None,
+        help=(
+            "Temperatura para variação de entonação (opcional; se não informado, o modelo usa o padrão interno,"
+            " geralmente 0.65)."
+        ),
     )
     parser.add_argument(
         "--interativo",

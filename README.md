@@ -25,10 +25,13 @@ python coqui_tts_local.py --modelo tts_models/pt/cv/vits --entrada entrada.txt -
 - `--velocidade`: ajusta a velocidade de fala (1.0 = normal). Valores como 0.8 ou 1.2 deixam a voz mais lenta ou mais rápida.
 - `--idioma`: define o idioma para modelos multilíngues (ex.: `pt`, `en`).
 - `--falante`/`--falante-idx`: escolhe a voz nos modelos multi-locutor (ex.: `Ana Florence`).
-- `--temperatura`: controla a variação de entonação (0.65 é o padrão).
+- `--temperatura`: controla a variação de entonação quando suportado (0.65 é o padrão recomendado pela API).
 - `--interativo`: abre uma interface web com Gradio para testes rápidos reutilizando o mesmo modelo carregado.
 
 > A documentação oficial informa que o pacote é testado no Ubuntu, mas funciona também no macOS e Windows.
+
+> Nem todos os modelos expõem parâmetros como `speed`, `language` ou `temperature`. Quando o recurso não estiver disponível,
+> o script mantém a síntese padrão e informa no log que o ajuste foi ignorado.
 
 ## Interface interativa com Gradio
 
@@ -43,5 +46,5 @@ Será exibida uma página com campo de texto, controles de velocidade/temperatur
 ## Dicas de narração
 
 - A Coqui TTS não suporta SSML; utilize pontuação ou reticências (`...`) para inserir pausas mais longas.
-- Modelos como FastPitch fornecem contornos de frequência que resultam em vozes mais expressivas. Combine com ajustes de `--temperatura` para controlar a aleatoriedade.
+- Modelos como FastPitch fornecem contornos de frequência que resultam em vozes mais expressivas. Combine com ajustes de `--temperatura` para controlar a aleatoriedade (se o modelo suportar a opção, o script faz o ajuste; caso contrário, informa que o parâmetro foi ignorado).
 - Consulte a [lista de modelos](https://coqui-tts.readthedocs.io/en/latest/models.html) para explorar vozes em mais de 1100 idiomas.
