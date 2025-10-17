@@ -80,13 +80,34 @@ docker compose run --rm ^
   --output /app/output/fala.wav
 ```
 
-## 6. Ajustes adicionais
+## 6. Iniciar a interface web com Gradio
+
+Para utilizar a interface visual que valida automaticamente as opções de cada modelo, execute:
+
+```powershell
+docker compose run --rm --service-ports ^
+  -e PIPER_VOICE_DIR="/voices" ^
+  -e PIPER_OUTPUT_DIR="/app/output" ^
+  -v "A:/python-projects/piper/voices:/voices:ro" ^
+  -v "${PWD}/output:/app/output" ^
+  piper-tts-ui
+```
+
+Em seguida, acesse `http://localhost:7860` no navegador. A aplicação exibirá automaticamente:
+
+- As vozes detectadas em `A:\python-projects\piper\voices`.
+- Combos apenas para parâmetros suportados pelo modelo selecionado (falante, `length_scale`, `noise_scale`, `noise_w`).
+- Logs de tempo decorrido durante a geração e aviso ao término.
+
+Para encerrar a interface, pressione `Ctrl+C` no terminal.
+
+## 7. Ajustes adicionais
 
 - Use `--speaker` para selecionar um índice específico em vozes multi-speaker.
 - Parâmetros como `--length-scale`, `--noise-scale` e `--noise-w` podem ser utilizados para controlar velocidade e variação da voz.
 - Se desejar reutilizar o contêiner sem reconstruir, remova a flag `--rm`.
 
-## 7. Limpeza
+## 8. Limpeza
 
 Para remover contêineres parados criados pelo `docker compose run`, utilize:
 
@@ -94,7 +115,7 @@ Para remover contêineres parados criados pelo `docker compose run`, utilize:
 docker container prune
 ```
 
-## 8. Solução de problemas
+## 9. Solução de problemas
 
 - **`Voice '...' not found`**: verifique se o nome passado em `--voice` coincide exatamente com o arquivo `.onnx` (sem a extensão) existente em `A:\\python-projects\\piper\\voices`.
 - **`Configuration file ... not found`**: o script exige o arquivo `.onnx.json` correspondente no mesmo diretório do modelo.

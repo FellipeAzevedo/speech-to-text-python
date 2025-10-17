@@ -1,6 +1,7 @@
 import argparse
 import os
 import subprocess
+import time
 from pathlib import Path
 
 
@@ -136,10 +137,31 @@ def main() -> None:
         noise_w=args.noise_w,
     )
 
+    print("[INFO] Iniciando síntese de áudio...", flush=True)
+    start_time = time.perf_counter()
+
+    process = subprocess.Popen(command)
+
     try:
-        subprocess.run(command, check=True)
-    except subprocess.CalledProcessError as exc:
-        raise SystemExit(exc.returncode) from exc
+        while True:
+            return_code = process.poll()
+            elapsed = time.perf_counter() - start_time
+            print(f"[INFO] Tempo decorrido: {elapsed:.1f}s", flush=True)
+            if return_code is not None:
+                if return_code != 0:
+                    raise SystemExit(return_code)
+                break
+            time.sleep(1)
+    except KeyboardInterrupt:
+        process.terminate()
+        raise
+
+    total_time = time.perf_counter() - start_time
+    print(
+        "[INFO] Síntese concluída em "
+        f"{total_time:.2f}s. Arquivo salvo em '{output_file}'.",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":
