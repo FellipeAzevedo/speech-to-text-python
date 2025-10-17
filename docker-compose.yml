@@ -1,0 +1,9 @@
+services:
+  piper-tts:
+    build: .
+    image: local/piper-tts:latest
+    volumes:
+      - ./output:/app/output
+    environment:
+      PIPER_VOICE_DIR: /voices
+    command: []
