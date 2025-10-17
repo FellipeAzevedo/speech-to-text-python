@@ -1,0 +1,6 @@
+TTS>=0.22.0
+gradio>=4.0.0
+numpy>=1.23.0
+soundfile>=0.12.1
+regex>=2022.10.31
+pytest>=7.4.0
