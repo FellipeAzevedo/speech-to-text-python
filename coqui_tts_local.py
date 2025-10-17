@@ -188,8 +188,38 @@ def executar_modo_automatico(
     falante: Optional[str],
     indice_falante: Optional[int],
     temperatura: Optional[float],
+    **kwargs: object,
 ) -> Path:
     """Executa o fluxo automático: ler arquivo e gerar o WAV."""
+    if "temperaturas" in kwargs and temperatura is None:
+        valor_temperaturas = kwargs.pop("temperaturas")
+        try:
+            temperatura = float(valor_temperaturas)  # type: ignore[arg-type]
+        except (TypeError, ValueError):
+            LOGGER.warning(
+                "Valor inválido para 'temperaturas': %r. O parâmetro será ignorado.",
+                valor_temperaturas,
+            )
+        else:
+            LOGGER.warning(
+                "Parâmetro 'temperaturas' recebido. Utilize 'temperatura'. Aplicando valor informado"
+                " (%.2f).",
+                temperatura,
+            )
+    elif "temperaturas" in kwargs:
+        valor_temperaturas = kwargs.pop("temperaturas")
+        LOGGER.warning(
+            "Parâmetro 'temperaturas' recebido, mas 'temperatura' já foi definido. Valor %r será ignorado.",
+            valor_temperaturas,
+        )
+
+    if kwargs:
+        nomes_desconhecidos = ", ".join(sorted(kwargs))
+        LOGGER.warning(
+            "Parâmetros não reconhecidos ignorados em executar_modo_automatico: %s",
+            nomes_desconhecidos,
+        )
+
     texto = ler_texto(arquivo_entrada)
     return sintetizar(
         tts,
