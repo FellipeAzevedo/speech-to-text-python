@@ -7,3 +7,15 @@ services:
     environment:
       PIPER_VOICE_DIR: /voices
     command: []
+  piper-tts-ui:
+    image: local/piper-tts:latest
+    depends_on:
+      - piper-tts
+    environment:
+      PIPER_VOICE_DIR: /voices
+      PIPER_OUTPUT_DIR: /app/output
+    volumes:
+      - ./output:/app/output
+    ports:
+      - "7860:7860"
+    command: ["python", "-m", "app.interface"]
