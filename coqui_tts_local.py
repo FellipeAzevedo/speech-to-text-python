@@ -116,7 +116,6 @@ def sintetizar(
     idioma: Optional[str] = None,
     falante: Optional[str] = None,
     indice_falante: Optional[int] = None,
-    temperatura: Optional[float] = None,
 ) -> Path:
     """Gera o áudio a partir do texto fornecido."""
     if not texto.strip():
@@ -158,18 +157,6 @@ def sintetizar(
     if indice_falante is not None:
         adicionar_parametro("speaker_idx", indice_falante)
 
-    if "temperature" in parametros_obrigatorios and temperatura is None:
-        temperatura = 0.65
-        LOGGER.debug(
-            "O modelo exige o parâmetro 'temperature'. Utilizando o valor padrão de %.2f.",
-            temperatura,
-        )
-
-    if temperatura is not None:
-        # A temperatura controla a aleatoriedade/entonação (default 0.65). Modelos como FastPitch já
-        # embutem contornos de frequência, tornando a voz mais expressiva.
-        adicionar_parametro("temperature", temperatura)
-
     LOGGER.info("Sintetizando áudio (pode levar alguns instantes)...")
     audio = tts.tts(**kwargs)
     sample_rate = _obter_sample_rate(tts)
@@ -187,9 +174,16 @@ def executar_modo_automatico(
     idioma: Optional[str],
     falante: Optional[str],
     indice_falante: Optional[int],
-    temperatura: Optional[float],
+    **kwargs: object,
 ) -> Path:
     """Executa o fluxo automático: ler arquivo e gerar o WAV."""
+    if kwargs:
+        nomes_desconhecidos = ", ".join(sorted(kwargs))
+        LOGGER.warning(
+            "Parâmetros não reconhecidos ignorados em executar_modo_automatico: %s",
+            nomes_desconhecidos,
+        )
+
     texto = ler_texto(arquivo_entrada)
     return sintetizar(
         tts,
@@ -199,7 +193,6 @@ def executar_modo_automatico(
         idioma=idioma,
         falante=falante,
         indice_falante=indice_falante,
-        temperatura=temperatura,
     )
 
 
@@ -208,7 +201,6 @@ def executar_modo_interativo(
     velocidade_padrao: float,
     idioma_padrao: Optional[str],
     falante_padrao: Optional[str],
-    temperatura_padrao: Optional[float],
 ) -> None:
     """Inicializa uma interface simples com Gradio para testes rápidos."""
     try:
@@ -218,7 +210,7 @@ def executar_modo_interativo(
             "Gradio não está instalado. Execute `pip install gradio`."
         ) from exc
 
-    def gerar_audio(texto: str, velocidade: float, idioma: str, falante: str, temperatura: float):
+    def gerar_audio(texto: str, velocidade: float, idioma: str, falante: str):
         if not texto.strip():
             return None
         with NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
@@ -230,7 +222,6 @@ def executar_modo_interativo(
             velocidade=velocidade,
             idioma=idioma or None,
             falante=falante or None,
-            temperatura=temperatura,
         )
         return str(caminho)
 
@@ -252,15 +243,12 @@ def executar_modo_interativo(
         )
         idioma_input = gr.Textbox(label="Idioma (opcional)", value=idioma_padrao or "")
         falante_input = gr.Textbox(label="Falante (opcional)", value=falante_padrao or "")
-        temperatura_slider = gr.Slider(
-            label="Temperatura (0.2 a 1.0)", minimum=0.2, maximum=1.0, step=0.05, value=temperatura_padrao or 0.65
-        )
         botao = gr.Button("Gerar áudio")
         saida_audio = gr.Audio(label="Resultado", type="filepath")
 
         botao.click(
             gerar_audio,
-            inputs=[entrada_texto, velocidade_slider, idioma_input, falante_input, temperatura_slider],
+            inputs=[entrada_texto, velocidade_slider, idioma_input, falante_input],
             outputs=saida_audio,
         )
 
@@ -315,15 +303,6 @@ def configurar_argumentos() -> argparse.Namespace:
         help="Índice numérico do falante (para modelos multi-locutor).",
     )
     parser.add_argument(
-        "--temperatura",
-        type=float,
-        default=None,
-        help=(
-            "Temperatura para variação de entonação (opcional; se não informado, o modelo usa o padrão interno,"
-            " geralmente 0.65)."
-        ),
-    )
-    parser.add_argument(
         "--interativo",
         action="store_true",
         help="Inicia a interface interativa com Gradio.",
@@ -348,7 +327,6 @@ def main() -> None:
             velocidade_padrao=args.velocidade,
             idioma_padrao=args.idioma,
             falante_padrao=args.falante,
-            temperatura_padrao=args.temperatura,
         )
         return
 
@@ -360,7 +338,6 @@ def main() -> None:
         idioma=args.idioma,
         falante=args.falante,
         indice_falante=args.falante_idx,
-        temperatura=args.temperatura,
     )
 
 
